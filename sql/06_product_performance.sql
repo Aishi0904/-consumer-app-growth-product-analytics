@@ -223,3 +223,115 @@ LIMIT 100;
 -- or prove that users purchased without viewing products.
 
 -- END OF BUSINESS INSIGHTS
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14G: Missing Product ID Validation
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Identify NULL and blank product identifiers.
+-- Measure product identifier completeness.
+
+SELECT
+
+    COUNT(*) AS total_item_events,
+
+    COUNTIF(item.item_id IS NULL)
+        AS null_product_ids,
+
+    COUNTIF(TRIM(item.item_id) = '')
+        AS blank_product_ids,
+
+    COUNTIF(
+        item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+    ) AS valid_product_ids,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(
+                item.item_id IS NOT NULL
+                AND TRIM(item.item_id) != ''
+            ),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS valid_product_id_pct
+
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+    AND event_name IN (
+        'view_item',
+        'add_to_cart',
+        'purchase'
+    );
+
+-- END OF QUERY 14G
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14G: Missing Product ID Validation
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Identify missing product identifiers.
+-- Measure product identifier completeness.
+
+SELECT
+    COUNT(*) AS total_item_events,
+    COUNTIF(item.item_id IS NULL) AS null_product_ids,
+    COUNTIF(TRIM(item.item_id) = '') AS blank_product_ids,
+    COUNTIF(
+        item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+    ) AS valid_product_ids,
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(
+                item.item_id IS NOT NULL
+                AND TRIM(item.item_id) != ''
+            ),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS valid_product_id_pct
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+    AND event_name IN ('view_item','add_to_cart','purchase');
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. The analysis identified 3,431,675 item-event records.
+--
+-- 2. No NULL product identifiers were observed.
+--
+-- 3. No blank product identifiers were observed.
+--
+-- 4. All observed records contained non-NULL,
+--    non-empty product identifiers, resulting in
+--    100% identifier completeness under this definition.
+--
+-- 5. This validation does not rule out placeholder
+--    identifiers such as '(not set)' or 'unknown'.
+--    These require a separate investigation.
+--
+-- =========================================================
+
+-- END OF QUERY 14G
