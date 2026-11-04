@@ -715,3 +715,127 @@ FROM
 -- =========================================================
 
 -- END OF QUERY 14J
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14K: Product Name-Based Event Coverage
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Examine product-level event coverage using
+-- normalised product names instead of product IDs.
+-- Compare name-based overlap across event categories.
+
+WITH product_name_events AS (
+    SELECT
+        LOWER(TRIM(item.item_name)) AS product_name,
+
+        COUNTIF(event_name = 'view_item') AS view_events,
+
+        COUNTIF(event_name = 'add_to_cart') AS cart_events,
+
+        COUNTIF(event_name = 'purchase') AS purchase_events
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+        AND item.item_name IS NOT NULL
+        AND TRIM(item.item_name) != ''
+
+    GROUP BY
+        product_name
+)
+
+SELECT
+    COUNT(*) AS total_identifiable_product_names,
+
+    COUNTIF(view_events > 0) AS names_with_views,
+
+    COUNTIF(cart_events > 0) AS names_with_cart_additions,
+
+    COUNTIF(purchase_events > 0) AS names_with_purchases,
+
+    COUNTIF(
+        view_events > 0
+        AND cart_events > 0
+        AND purchase_events > 0
+    ) AS names_in_all_three_stages,
+
+    COUNTIF(
+        view_events > 0
+        AND cart_events = 0
+        AND purchase_events = 0
+    ) AS names_with_views_only,
+
+    COUNTIF(
+        view_events = 0
+        AND cart_events > 0
+        AND purchase_events = 0
+    ) AS names_with_cart_only,
+
+    COUNTIF(
+        view_events = 0
+        AND cart_events = 0
+        AND purchase_events > 0
+    ) AS names_with_purchases_only
+
+FROM
+    product_name_events;
+
+-- END OF QUERY 14K
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Identified 430 distinct normalised product names
+--    across the selected product event categories.
+--
+-- 2. A total of 422 names appeared in product views,
+--    414 in cart additions and 396 in purchases.
+--
+-- 3. A total of 386 product names appeared across
+--    all three event categories, representing
+--    approximately 89.77% of identifiable names.
+--
+-- 4. Only 6 product names appeared exclusively
+--    in product view events.
+--
+-- 5. No product names appeared exclusively
+--    in cart addition events.
+--
+-- 6. Only 8 product names appeared exclusively
+--    in purchase events.
+--
+-- 7. Name-based matching produced substantially
+--    greater cross-stage overlap than product-ID
+--    matching in this dataset.
+--
+-- 8. However, previous analysis identified multiple
+--    product IDs associated with individual names.
+--    Therefore, product names should not be assumed
+--    to be unique product identifiers.
+--
+-- 9. Further validation is required before using
+--    product names for product-level conversion metrics.
+--
+-- NOTE:
+-- Event presence is measured across the full
+-- observation window, not through chronological
+-- user-level purchase journeys.
+--
+-- =========================================================
+
+-- END OF QUERY 14K
