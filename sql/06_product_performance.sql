@@ -1380,3 +1380,158 @@ ORDER BY
 -- =========================================================
 
 -- END OF QUERY 14O
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14P: Product Identifier Consistency Validation
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Consolidate product identifier mapping checks.
+-- Evaluate the reliability of product IDs and names.
+
+WITH product_mapping AS (
+
+    SELECT DISTINCT
+        TRIM(item.item_id) AS product_id,
+        LOWER(TRIM(item.item_name)) AS product_name
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+
+        AND item.item_name IS NOT NULL
+        AND TRIM(item.item_name) != ''
+),
+
+id_summary AS (
+
+    SELECT
+        product_id,
+        COUNT(DISTINCT product_name) AS distinct_names
+
+    FROM product_mapping
+    GROUP BY product_id
+),
+
+name_summary AS (
+
+    SELECT
+        product_name,
+        COUNT(DISTINCT product_id) AS distinct_ids
+
+    FROM product_mapping
+    GROUP BY product_name
+),
+
+id_metrics AS (
+
+    SELECT
+        COUNT(*) AS total_product_ids,
+
+        COUNTIF(distinct_names = 1)
+            AS ids_with_one_name,
+
+        COUNTIF(distinct_names > 1)
+            AS ids_with_multiple_names,
+
+        COUNTIF(
+            REGEXP_CONTAINS(product_id, r'^[0-9]+$')
+        ) AS numeric_product_ids,
+
+        COUNTIF(
+            REGEXP_CONTAINS(product_id, r'[A-Za-z]')
+            AND REGEXP_CONTAINS(product_id, r'[0-9]')
+        ) AS alphanumeric_product_ids
+
+    FROM id_summary
+),
+
+name_metrics AS (
+
+    SELECT
+        COUNT(*) AS total_product_names,
+
+        COUNTIF(distinct_ids = 1)
+            AS names_with_one_id,
+
+        COUNTIF(distinct_ids > 1)
+            AS names_with_multiple_ids
+
+    FROM name_summary
+)
+
+SELECT
+    i.total_product_ids,
+    n.total_product_names,
+
+    i.ids_with_one_name,
+    i.ids_with_multiple_names,
+
+    n.names_with_one_id,
+    n.names_with_multiple_ids,
+
+    i.numeric_product_ids,
+    i.alphanumeric_product_ids
+
+FROM id_metrics i
+CROSS JOIN name_metrics n;
+
+-- END OF QUERY 14P
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Identified 1,374 distinct valid product IDs
+--    and 429 distinct normalised product names.
+--
+-- 2. A total of 1,368 product IDs mapped to one
+--    product name, while 6 mapped to multiple names.
+--
+-- 3. Only 15 product names mapped to exactly one
+--    product ID.
+--
+-- 4. A total of 414 product names mapped to multiple
+--    product IDs, representing 96.50%.
+--
+-- 5. Numeric identifiers accounted for 953 IDs,
+--    while alphanumeric identifiers accounted for 421.
+--
+-- 6. Product IDs demonstrated substantially greater
+--    consistency when mapped to names than product
+--    names demonstrated when mapped back to IDs.
+--
+-- 7. Product names should not independently be used
+--    as unique product identifiers.
+--
+-- 8. Product-level analysis should preserve product IDs
+--    while accounting for the six identified ID-to-name
+--    inconsistencies.
+--
+-- =========================================================
+
+-- END OF QUERY 14P
