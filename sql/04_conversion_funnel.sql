@@ -231,3 +231,39 @@ FROM funnel_users;
 
 -- END OF SUPPLEMENTARY FUNNEL ANALYSIS
 
+
+
+-- ============================================================
+-- BUSINESS INSIGHTS AND INTERPRETATION
+-- ============================================================
+
+-- KEY FINDING 1:
+-- Overall purchase conversion rate is 7.21%.
+-- This indicates an opportunity to improve the purchase journey.
+
+-- KEY FINDING 2:
+-- View-to-cart drop-off is 79.52%.
+-- Investigate product relevance, pricing and product-page experience.
+
+-- KEY FINDING 3:
+-- Cart-to-checkout drop-off is 22.56%.
+-- Review cart usability and potential friction before checkout.
+
+-- KEY FINDING 4:
+-- Checkout-to-purchase drop-off is 54.51%.
+-- Investigate shipping costs, payment failures and checkout complexity.
+
+-- BUSINESS RECOMMENDATIONS:
+-- 1. Improve product discovery and product-page engagement.
+-- 2. Optimise the cart experience.
+-- 3. Reduce checkout friction.
+-- 4. Investigate payment-related abandonment.
+-- 5. Monitor funnel conversion rates over time.
+
+-- NOTE:
+-- Findings are descriptive and do not establish causality.
+
+-- ============================================================
+-- END OF BUSINESS INSIGHTS
+-- ============================================================
+
