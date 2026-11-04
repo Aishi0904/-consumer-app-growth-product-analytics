@@ -1097,3 +1097,153 @@ LIMIT 100;
 
 -- END OF QUERY 14M
 
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14N: Product ID Format and Mapping Pattern Analysis
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Examine product ID formats associated with
+-- product names having multiple identifiers.
+-- Identify numeric and alphanumeric ID patterns.
+
+WITH product_id_mapping AS (
+
+    SELECT
+        LOWER(TRIM(item.item_name)) AS product_name,
+        TRIM(item.item_id) AS product_id,
+
+        COUNTIF(event_name = 'view_item') AS view_events,
+
+        COUNTIF(event_name = 'add_to_cart') AS cart_events,
+
+        COUNTIF(event_name = 'purchase') AS purchase_events
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+
+        AND item.item_name IS NOT NULL
+        AND TRIM(item.item_name) != ''
+
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+
+    GROUP BY
+        product_name,
+        product_id
+),
+
+product_name_summary AS (
+
+    SELECT
+        product_name,
+
+        COUNT(*) AS distinct_product_ids,
+
+        COUNTIF(
+            REGEXP_CONTAINS(product_id, r'^[0-9]+$')
+        ) AS numeric_ids,
+
+        COUNTIF(
+            REGEXP_CONTAINS(product_id, r'[A-Za-z]')
+            AND REGEXP_CONTAINS(product_id, r'[0-9]')
+        ) AS alphanumeric_ids,
+
+        COUNTIF(
+            NOT REGEXP_CONTAINS(product_id, r'^[0-9]+$')
+            AND NOT (
+                REGEXP_CONTAINS(product_id, r'[A-Za-z]')
+                AND REGEXP_CONTAINS(product_id, r'[0-9]')
+            )
+        ) AS other_format_ids,
+
+        ARRAY_AGG(
+            DISTINCT product_id
+            IGNORE NULLS
+            LIMIT 10
+        ) AS sample_product_ids
+
+    FROM
+        product_id_mapping
+
+    GROUP BY
+        product_name
+)
+
+SELECT
+    product_name,
+    distinct_product_ids,
+    numeric_ids,
+    alphanumeric_ids,
+    other_format_ids,
+    sample_product_ids
+
+FROM
+    product_name_summary
+
+WHERE
+    distinct_product_ids > 1
+
+ORDER BY
+    distinct_product_ids DESC
+
+LIMIT 100;
+
+-- END OF QUERY 14N
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. The analysis examined product names associated
+--    with multiple distinct product identifiers.
+--
+-- 2. Google Land & Sea French Terry was associated
+--    with 13 IDs: 11 numeric and 2 alphanumeric.
+--
+-- 3. Android Garden Tee Orange was associated
+--    with 9 IDs: 8 numeric and 1 alphanumeric.
+--
+-- 4. Both examples demonstrate mixed identifier
+--    formats within individual product-name mappings.
+--
+-- 5. Numeric identifiers were more frequent than
+--    alphanumeric identifiers in these two examples.
+--
+-- 6. Different identifier formats may reflect
+--    different catalog conventions or product
+--    distinctions; the format alone does not establish
+--    whether identifiers are duplicates or variants.
+--
+-- 7. Further product-level mapping validation is
+--    required before selecting a reliable product key.
+--
+-- NOTE:
+-- The query returns a maximum of 100 product-name
+-- mapping exceptions. The observations above describe
+-- the examples visible in the returned results.
+--
+-- =========================================================
+
+-- END OF QUERY 14N
