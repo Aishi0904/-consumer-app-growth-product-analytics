@@ -839,3 +839,126 @@ FROM
 -- =========================================================
 
 -- END OF QUERY 14K
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14L: Product Name-to-ID Mapping Reliability
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Evaluate whether normalised product names map
+-- consistently to unique product identifiers.
+-- Measure one-to-one and one-to-many mappings.
+
+WITH product_mapping AS (
+
+    SELECT
+        LOWER(TRIM(item.item_name)) AS product_name,
+
+        COUNT(DISTINCT item.item_id) AS distinct_product_ids
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+
+        AND item.item_name IS NOT NULL
+        AND TRIM(item.item_name) != ''
+
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+
+    GROUP BY
+        product_name
+)
+
+SELECT
+
+    COUNT(*) AS total_product_names,
+
+    COUNTIF(
+        distinct_product_ids = 1
+    ) AS names_with_one_product_id,
+
+    COUNTIF(
+        distinct_product_ids > 1
+    ) AS names_with_multiple_product_ids,
+
+    MAX(
+        distinct_product_ids
+    ) AS maximum_ids_per_product_name,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(distinct_product_ids = 1),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS one_to_one_mapping_pct,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(distinct_product_ids > 1),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS one_to_many_mapping_pct
+
+FROM
+    product_mapping;
+
+-- END OF QUERY 14L
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Identified 429 distinct product names associated
+--    with valid product identifiers.
+--
+-- 2. Only 15 product names mapped to exactly one
+--    distinct product ID, representing 3.50%.
+--
+-- 3. A total of 414 product names mapped to multiple
+--    product IDs, representing 96.50%.
+--
+-- 4. The maximum number of distinct product IDs
+--    associated with a single product name was 13.
+--
+-- 5. The results indicate substantial one-to-many
+--    mapping between product names and product IDs.
+--
+-- 6. Product names cannot be assumed to represent
+--    unique products in the analytical dataset.
+--
+-- 7. Although name-based matching improves event
+--    overlap, it may combine multiple product IDs
+--    into a single analytical category.
+--
+-- 8. Neither product ID nor product name should
+--    independently be treated as a fully reliable
+--    product-level matching key without further
+--    validation.
+--
+-- =========================================================
+
+-- END OF QUERY 14L
