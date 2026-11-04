@@ -591,3 +591,127 @@ ORDER BY
 -- =========================================================
 
 -- END OF QUERY 14I
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14J: Product-Level Event Coverage Summary
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Measure product-level coverage across views,
+-- cart additions and purchases.
+-- Identify products appearing across multiple stages.
+
+WITH product_events AS (
+    SELECT
+        item.item_id AS product_id,
+
+        COUNTIF(event_name = 'view_item') AS view_events,
+
+        COUNTIF(event_name = 'add_to_cart') AS cart_events,
+
+        COUNTIF(event_name = 'purchase') AS purchase_events
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+
+    GROUP BY
+        product_id
+)
+
+SELECT
+    COUNT(*) AS total_identifiable_products,
+
+    COUNTIF(view_events > 0) AS products_with_views,
+
+    COUNTIF(cart_events > 0) AS products_with_cart_additions,
+
+    COUNTIF(purchase_events > 0) AS products_with_purchases,
+
+    COUNTIF(
+        view_events > 0
+        AND cart_events > 0
+        AND purchase_events > 0
+    ) AS products_in_all_three_stages,
+
+    COUNTIF(
+        view_events > 0
+        AND cart_events = 0
+        AND purchase_events = 0
+    ) AS products_with_views_only,
+
+    COUNTIF(
+        view_events = 0
+        AND cart_events > 0
+        AND purchase_events = 0
+    ) AS products_with_cart_only,
+
+    COUNTIF(
+        view_events = 0
+        AND cart_events = 0
+        AND purchase_events > 0
+    ) AS products_with_purchases_only
+
+FROM
+    product_events;
+
+-- END OF QUERY 14J
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Identified 1,374 distinct products with valid
+--    product identifiers across the selected events.
+--
+-- 2. A total of 426 products appeared in product views,
+--    805 in cart additions and 809 in purchases.
+--
+-- 3. Only 4 products appeared across all three
+--    event categories, representing approximately
+--    0.29% of identifiable products.
+--
+-- 4. A total of 558 products appeared exclusively
+--    in purchase events under the current product ID.
+--
+-- 5. Another 143 products appeared exclusively
+--    in cart addition events.
+--
+-- 6. The limited overlap indicates that product IDs
+--    may not provide a consistent linking key across
+--    the customer journey.
+--
+-- 7. Product-level conversion metrics should not be
+--    interpreted as reliable until identifier
+--    inconsistencies are investigated further.
+--
+-- NOTE:
+-- Event presence is measured over the full observation
+-- window. Absence of an event does not establish that
+-- the event never occurred outside this period or
+-- under another product identifier.
+--
+-- =========================================================
+
+-- END OF QUERY 14J
