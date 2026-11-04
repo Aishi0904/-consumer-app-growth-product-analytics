@@ -1729,3 +1729,80 @@ ORDER BY
 -- =========================================================
 
 -- END OF QUERY 14Q
+
+
+
+-- =========================================================
+-- QUERY 15F: Unidentified Purchase Record Diagnostics
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+SELECT
+    COUNT(*) AS unidentified_purchase_records,
+
+    COUNT(DISTINCT user_pseudo_id)
+        AS distinct_users,
+
+    COUNT(DISTINCT event_date)
+        AS distinct_event_dates,
+
+    COUNTIF(
+        item.item_id = '(not set)'
+    ) AS placeholder_product_ids,
+
+    COUNTIF(
+        item.item_name = '(not set)'
+    ) AS placeholder_product_names,
+
+    COUNTIF(
+        (
+            SELECT ep.value.string_value
+            FROM UNNEST(event_params) AS ep
+            WHERE ep.key = 'transaction_id'
+            LIMIT 1
+        ) IS NULL
+    ) AS missing_transaction_ids
+
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+    AND event_name = 'purchase'
+    AND item.item_revenue IS NULL
+    AND item.item_revenue_in_usd IS NULL;
+
+-- END OF QUERY 15F
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS: QUERY 15F
+-- =========================================================
+
+-- 1. Identified 448 incomplete purchase-item records.
+
+-- 2. These records involved 397 distinct users
+--    across 66 different event dates.
+
+-- 3. All 448 records contained the placeholder
+--    product ID '(not set)'.
+
+-- 4. All 448 records also contained the placeholder
+--    product name '(not set)'.
+
+-- 5. All 448 records had missing transaction IDs.
+
+-- 6. The findings indicate a systematic
+--    product-identification and transaction-attribution
+--    issue within the purchase event data.
+
+-- 7. These records should be flagged separately and
+--    excluded from product-level revenue attribution.
+
+-- 8. They should not automatically be interpreted
+--    as zero-revenue purchases.
+
+-- =========================================================
+-- END OF QUERY 15F
+-- =========================================================
