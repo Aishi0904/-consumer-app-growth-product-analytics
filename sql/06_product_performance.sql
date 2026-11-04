@@ -962,3 +962,138 @@ FROM
 -- =========================================================
 
 -- END OF QUERY 14L
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14M: Detailed Product Identifier Mapping Exceptions
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Identify product names associated with multiple IDs.
+-- Examine the distribution of product events across
+-- these inconsistent product mappings.
+
+WITH product_mapping AS (
+
+    SELECT
+        LOWER(TRIM(item.item_name)) AS product_name,
+
+        COUNT(DISTINCT item.item_id) AS distinct_product_ids,
+
+        ARRAY_AGG(
+            DISTINCT item.item_id
+            IGNORE NULLS
+            LIMIT 20
+        ) AS associated_product_ids,
+
+        COUNTIF(event_name = 'view_item') AS view_events,
+
+        COUNTIF(event_name = 'add_to_cart') AS cart_events,
+
+        COUNTIF(event_name = 'purchase') AS purchase_events
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+
+        AND item.item_name IS NOT NULL
+        AND TRIM(item.item_name) != ''
+
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+
+    GROUP BY
+        product_name
+)
+
+SELECT
+    product_name,
+
+    distinct_product_ids,
+
+    associated_product_ids,
+
+    view_events,
+
+    cart_events,
+
+    purchase_events,
+
+    view_events + cart_events + purchase_events
+        AS total_item_events
+
+FROM
+    product_mapping
+
+WHERE
+    distinct_product_ids > 1
+
+ORDER BY
+    distinct_product_ids DESC,
+    total_item_events DESC
+
+LIMIT 100;
+
+-- END OF QUERY 14M
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. The analysis identified product names associated
+--    with multiple distinct product identifiers.
+--
+-- 2. Google Land & Sea French Terry was associated
+--    with 13 distinct product IDs in the returned results.
+--
+-- 3. Google Zip Hoodie F/C was associated with
+--    9 distinct product IDs.
+--
+-- 4. Both examples demonstrated substantial
+--    product-view and cart-addition activity.
+--
+-- 5. The Google Land & Sea French Terry example
+--    recorded 31,068 views, 5,180 cart additions
+--    and 30 purchase item events.
+--
+-- 6. The Google Zip Hoodie F/C example recorded
+--    49,795 views, 13,011 cart additions
+--    and 256 purchase item events.
+--
+-- 7. Multiple product IDs associated with one
+--    product name may complicate product-level
+--    performance attribution.
+--
+-- 8. Further investigation is required to determine
+--    whether these mappings reflect product variants,
+--    catalog inconsistencies or other identifier issues.
+--
+-- NOTE:
+-- This query returns only the top 100 mapping exceptions.
+-- The observations should not be treated as a complete
+-- inventory of all product-name mapping exceptions.
+--
+-- =========================================================
+
+-- END OF QUERY 14M
+
