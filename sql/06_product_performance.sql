@@ -1247,3 +1247,136 @@ LIMIT 100;
 -- =========================================================
 
 -- END OF QUERY 14N
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14O: Reverse Product ID-to-Name Mapping Investigation
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Identify product IDs associated with multiple
+-- distinct normalised product names.
+-- Examine the event distribution of these mappings.
+
+WITH product_id_name_mapping AS (
+
+    SELECT
+        TRIM(item.item_id) AS product_id,
+
+        COUNT(
+            DISTINCT LOWER(TRIM(item.item_name))
+        ) AS distinct_product_names,
+
+        ARRAY_AGG(
+            DISTINCT LOWER(TRIM(item.item_name))
+            IGNORE NULLS
+            LIMIT 10
+        ) AS associated_product_names,
+
+        COUNTIF(event_name = 'view_item') AS view_events,
+
+        COUNTIF(event_name = 'add_to_cart') AS cart_events,
+
+        COUNTIF(event_name = 'purchase') AS purchase_events
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+
+        AND item.item_name IS NOT NULL
+        AND TRIM(item.item_name) != ''
+
+    GROUP BY
+        product_id
+)
+
+SELECT
+    product_id,
+
+    distinct_product_names,
+
+    associated_product_names,
+
+    view_events,
+
+    cart_events,
+
+    purchase_events,
+
+    view_events + cart_events + purchase_events
+        AS total_item_events
+
+FROM
+    product_id_name_mapping
+
+WHERE
+    distinct_product_names > 1
+
+ORDER BY
+    distinct_product_names DESC,
+    total_item_events DESC;
+
+-- END OF QUERY 14O
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Identified 6 product IDs associated with
+--    multiple distinct product names.
+--
+-- 2. Each identified product ID was associated
+--    with 2 distinct normalised product names.
+--
+-- 3. GGOECXXX1630 was associated with Google Cloud
+--    Unisex Zip Hoodie and Google Black Cloud Zip Hoodie.
+--
+-- 4. GGOECDHQ163999 was associated with White Google
+--    Shoreline Bottle and Google Shoreline Water Bottle.
+--
+-- 5. GGOEAFKQ130599 was associated with two naming
+--    formats for Android Iconic 4-inch Decal.
+--
+-- 6. The decal naming variation included an HTML
+--    encoding difference: a quotation mark versus
+--    the encoded entity '&quot;'.
+--
+-- 7. The remaining identified product IDs also
+--    demonstrated multiple product-name associations.
+--
+-- 8. These inconsistencies may affect product
+--    categorisation, reporting and product attribution.
+--
+-- 9. Further validation is required before treating
+--    these product-name variations as equivalent.
+--
+-- NOTE:
+-- Event counts represent item-event records,
+-- not unique users or unique transactions.
+--
+-- =========================================================
+
+-- END OF QUERY 14O
