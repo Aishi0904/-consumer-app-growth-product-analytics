@@ -335,3 +335,71 @@ WHERE
 -- =========================================================
 
 -- END OF QUERY 14G
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14H: Placeholder Product ID Investigation
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Identify placeholder product identifiers.
+-- Evaluate their presence across product events.
+-- Assess their impact on product-level analysis.
+
+SELECT
+    LOWER(TRIM(item.item_id)) AS product_id_value,
+    COUNT(*) AS item_event_count,
+    COUNT(DISTINCT user_pseudo_id) AS unique_users,
+    COUNTIF(event_name = 'view_item') AS view_events,
+    COUNTIF(event_name = 'add_to_cart') AS cart_events,
+    COUNTIF(event_name = 'purchase') AS purchase_events
+
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+    AND event_name IN ('view_item', 'add_to_cart', 'purchase')
+    AND LOWER(TRIM(item.item_id)) IN (
+        '(not set)',
+        'not set',
+        'unknown',
+        'null',
+        ''
+    )
+
+GROUP BY
+    product_id_value
+
+ORDER BY
+    item_event_count DESC;
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Identified 601 item-event records containing
+--    the placeholder product ID '(not set)'.
+--
+-- 2. These records involved 537 distinct users.
+--
+-- 3. The placeholder appeared across all three
+--    product event categories:
+--    product views, cart additions and purchases.
+--
+-- 4. A total of 448 purchase item-event records
+--    contained the placeholder identifier.
+--
+-- 5. These records cannot be reliably attributed
+--    to individual products using item_id.
+--
+-- 6. Product-level performance analysis should
+--    account for these unidentified product records
+--    to avoid misleading attribution.
+--
+-- =========================================================
+
+-- END OF QUERY 14H
