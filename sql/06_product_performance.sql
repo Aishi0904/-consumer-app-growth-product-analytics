@@ -1806,3 +1806,102 @@ WHERE
 -- =========================================================
 -- END OF QUERY 15F
 -- =========================================================
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 15G: Validated Product Revenue Summary
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+SELECT
+
+    COUNT(*) AS total_purchase_item_records,
+
+    COUNTIF(
+        item.item_id IS NOT NULL
+        AND LOWER(TRIM(item.item_id)) NOT IN ('', '(not set)')
+        AND item.item_revenue_in_usd IS NOT NULL
+    ) AS valid_product_revenue_records,
+
+    COUNTIF(
+        item.item_id IS NULL
+        OR LOWER(TRIM(item.item_id)) IN ('', '(not set)')
+        OR item.item_revenue_in_usd IS NULL
+    ) AS excluded_incomplete_records,
+
+    COUNT(DISTINCT IF(
+        item.item_id IS NOT NULL
+        AND LOWER(TRIM(item.item_id)) NOT IN ('', '(not set)')
+        AND item.item_revenue_in_usd IS NOT NULL,
+        item.item_id,
+        NULL
+    )) AS identifiable_products,
+
+    ROUND(
+        SUM(
+            IF(
+                item.item_id IS NOT NULL
+                AND LOWER(TRIM(item.item_id)) NOT IN ('', '(not set)')
+                AND item.item_revenue_in_usd IS NOT NULL,
+                item.item_revenue_in_usd,
+                NULL
+            )
+        ),
+        2
+    ) AS validated_product_revenue_usd,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(
+                item.item_id IS NOT NULL
+                AND LOWER(TRIM(item.item_id)) NOT IN ('', '(not set)')
+                AND item.item_revenue_in_usd IS NOT NULL
+            ),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS revenue_record_completeness_pct
+
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+    AND event_name = 'purchase';
+
+-- END OF QUERY 15G
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS: QUERY 15G
+-- =========================================================
+
+-- 1. The analysis identified 16,003 purchase item records.
+
+-- 2. A total of 15,555 records contained valid product
+--    identifiers and non-missing USD revenue values.
+
+-- 3. A total of 448 records were excluded due to
+--    incomplete product identifiers or missing revenue.
+
+-- 4. Revenue record completeness was approximately 97.20%.
+
+-- 5. The analysis identified 809 distinct products
+--    with valid product identifiers and revenue values.
+
+-- 6. Validated product-level item revenue totalled
+--    USD 362,110.00.
+
+-- 7. The 448 incomplete records were investigated
+--    separately and should remain flagged in reporting.
+
+-- 8. This figure represents validated purchase item
+--    revenue and should not be confused with deduplicated
+--    transaction-level revenue.
+
+-- =========================================================
+-- END OF QUERY 15G
+-- =========================================================
