@@ -396,3 +396,127 @@ ORDER BY
 -- Return intervals measure gaps between consecutive
 -- active calendar days, not individual sessions.
 -- Users may appear in multiple frequency categories.
+
+
+
+-- ============================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 13: Repeat Purchase Rate Analysis
+-- TOOL: Google BigQuery
+-- DATASET: GA4 Public Ecommerce Sample
+-- PERIOD: November 2020 - January 2021
+-- ============================================================
+
+-- OBJECTIVE:
+-- Identify repeat purchasing customers.
+-- Calculate repeat purchase rate.
+-- Understand customer purchasing frequency.
+
+WITH customer_purchases AS (
+
+    SELECT
+        user_pseudo_id,
+
+        COUNTIF(event_name = 'purchase')
+            AS total_purchases
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+        AND user_pseudo_id IS NOT NULL
+
+    GROUP BY
+        user_pseudo_id
+
+),
+
+purchase_segments AS (
+
+    SELECT
+        user_pseudo_id,
+        total_purchases,
+
+        CASE
+            WHEN total_purchases = 1
+                THEN 'One-time Purchaser'
+
+            WHEN total_purchases >= 2
+                THEN 'Repeat Purchaser'
+        END AS purchase_category
+
+    FROM customer_purchases
+
+)
+
+
+SELECT
+
+    COUNTIF(total_purchases > 0)
+        AS total_purchasing_users,
+
+    COUNTIF(total_purchases = 1)
+        AS one_time_purchasers,
+
+    COUNTIF(total_purchases >= 2)
+        AS repeat_purchasers,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(total_purchases >= 2),
+            COUNTIF(total_purchases > 0)
+        ) * 100,
+        2
+    ) AS repeat_purchase_rate_pct,
+
+    SUM(total_purchases)
+        AS total_purchase_events,
+
+    ROUND(
+        AVG(
+            IF(total_purchases > 0,
+               total_purchases,
+               NULL)
+        ),
+        2
+    ) AS average_purchases_per_customer
+
+FROM purchase_segments;
+
+
+
+-- ============================================================
+-- BUSINESS INSIGHTS: REPEAT PURCHASE ANALYSIS
+-- ============================================================
+
+-- 1. A total of 4,419 customers made at least
+-- one purchase during the observation period.
+
+-- 2. 3,644 customers (82.46%) made only one purchase.
+
+-- 3. 775 customers (17.54%) made two or more purchases.
+
+-- 4. The average purchase frequency was
+-- approximately 1.29 purchases per customer.
+
+-- 5. The high proportion of one-time purchasers
+-- indicates an opportunity to improve repeat engagement.
+
+-- BUSINESS RECOMMENDATIONS:
+
+-- 1. Introduce personalised post-purchase recommendations.
+-- 2. Develop targeted customer re-engagement campaigns.
+-- 3. Encourage repeat purchases through loyalty programmes.
+-- 4. Analyse product categories associated with repeat buying.
+-- 5. Monitor repeat purchase rate over subsequent periods.
+
+-- NOTE:
+-- Repeat purchase behaviour is measured within the
+-- November 2020 - January 2021 observation window.
+-- This is a descriptive analysis and does not establish causality.
+
+-- ============================================================
+-- END OF REPEAT PURCHASE ANALYSIS
+-- ============================================================
+
