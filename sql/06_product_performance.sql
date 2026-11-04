@@ -1535,3 +1535,197 @@ CROSS JOIN name_metrics n;
 -- =========================================================
 
 -- END OF QUERY 14P
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14Q: Final Product-Level Performance Analysis
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Evaluate product performance using item-level events.
+-- Preserve product IDs as the primary grouping key.
+-- Exclude unidentified product placeholders.
+-- Avoid unreliable product conversion calculations.
+
+WITH product_events AS (
+
+    SELECT
+        TRIM(item.item_id) AS product_id,
+
+        LOWER(TRIM(item.item_name)) AS product_name,
+
+        event_name,
+
+        item.quantity AS quantity,
+
+        item.item_revenue AS item_revenue
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+        UNNEST(items) AS item
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'purchase'
+        )
+
+        AND item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+),
+
+product_summary AS (
+
+    SELECT
+        product_id,
+
+        COUNT(DISTINCT product_name)
+            AS distinct_product_names,
+
+        ARRAY_AGG(
+            DISTINCT product_name
+            IGNORE NULLS
+            LIMIT 5
+        ) AS product_names,
+
+        COUNTIF(event_name = 'view_item')
+            AS product_view_events,
+
+        COUNTIF(event_name = 'add_to_cart')
+            AS add_to_cart_events,
+
+        COUNTIF(event_name = 'purchase')
+            AS purchase_item_events,
+
+        SUM(
+            CASE
+                WHEN event_name = 'purchase'
+                THEN COALESCE(quantity, 0)
+                ELSE 0
+            END
+        ) AS units_sold,
+
+        SUM(
+            CASE
+                WHEN event_name = 'purchase'
+                THEN COALESCE(item_revenue, 0)
+                ELSE 0
+            END
+        ) AS item_revenue
+
+    FROM
+        product_events
+
+    GROUP BY
+        product_id
+)
+
+SELECT
+    product_id,
+
+    product_names,
+
+    distinct_product_names,
+
+    product_view_events,
+
+    add_to_cart_events,
+
+    purchase_item_events,
+
+    units_sold,
+
+    ROUND(item_revenue, 2) AS item_revenue,
+
+    CASE
+        WHEN product_view_events > 0
+             AND add_to_cart_events > 0
+             AND purchase_item_events > 0
+            THEN 'All three event types'
+
+        WHEN product_view_events > 0
+             AND add_to_cart_events > 0
+            THEN 'Views and cart additions'
+
+        WHEN add_to_cart_events > 0
+             AND purchase_item_events > 0
+            THEN 'Cart additions and purchases'
+
+        WHEN product_view_events > 0
+             AND purchase_item_events > 0
+            THEN 'Views and purchases'
+
+        WHEN product_view_events > 0
+            THEN 'Views only'
+
+        WHEN add_to_cart_events > 0
+            THEN 'Cart additions only'
+
+        ELSE 'Purchases only'
+    END AS event_coverage_category
+
+FROM
+    product_summary
+
+ORDER BY
+    item_revenue DESC,
+    purchase_item_events DESC;
+
+-- END OF QUERY 14Q
+
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. The final analysis evaluated 1,374 identifiable
+--    product IDs across the selected observation period.
+--
+-- 2. Google Canteen Bottle Black recorded 268 units sold
+--    and 5,303 in item revenue in the visible results.
+--
+-- 3. Google Utility Backpack recorded 53 units sold
+--    and 5,256 in item revenue.
+--
+-- 4. Google Zip Hoodie F/C recorded 94 units sold
+--    and 4,728 in item revenue.
+--
+-- 5. Several products recorded purchase activity
+--    without corresponding product views or cart
+--    additions under the same product identifier.
+--
+-- 6. Product event coverage inconsistencies may affect
+--    product-level conversion and attribution analysis.
+--
+-- 7. Product revenue and units sold provide distinct
+--    measures of commercial performance.
+--
+-- 8. Product-level rankings should be interpreted
+--    alongside identifier reliability and event coverage.
+--
+-- 9. Revenue units and currency should be independently
+--    validated before financial interpretation.
+--
+-- NOTE:
+-- Purchase item events represent item-level records,
+-- not unique transactions or purchasing customers.
+--
+-- Event absence within the observation window does not
+-- establish that an event never occurred.
+--
+-- =========================================================
+
+-- END OF QUERY 14Q
