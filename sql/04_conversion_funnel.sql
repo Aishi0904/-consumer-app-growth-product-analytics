@@ -134,3 +134,100 @@ FROM
 
 
 -- END OF PURCHASE FUNNEL ANALYSIS
+
+
+-- =====================================================
+-- QUERY 02: Overall Conversion and Funnel Drop-off Analysis
+-- =====================================================
+
+WITH funnel_users AS (
+
+    SELECT
+
+        COUNT(DISTINCT IF(
+            event_name = 'view_item',
+            user_pseudo_id,
+            NULL
+        )) AS product_view_users,
+
+        COUNT(DISTINCT IF(
+            event_name = 'add_to_cart',
+            user_pseudo_id,
+            NULL
+        )) AS cart_users,
+
+        COUNT(DISTINCT IF(
+            event_name = 'begin_checkout',
+            user_pseudo_id,
+            NULL
+        )) AS checkout_users,
+
+        COUNT(DISTINCT IF(
+            event_name = 'purchase',
+            user_pseudo_id,
+            NULL
+        )) AS purchasing_users
+
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+        AND event_name IN (
+            'view_item',
+            'add_to_cart',
+            'begin_checkout',
+            'purchase'
+        )
+)
+
+SELECT
+
+    product_view_users,
+    cart_users,
+    checkout_users,
+    purchasing_users,
+
+    -- Overall Purchase Conversion Rate
+
+    ROUND(
+        SAFE_DIVIDE(
+            purchasing_users,
+            product_view_users
+        ) * 100,
+        2
+    ) AS overall_conversion_pct,
+
+    -- Absolute User Drop-offs
+
+    product_view_users - cart_users
+        AS view_to_cart_dropoff,
+
+    cart_users - checkout_users
+        AS cart_to_checkout_dropoff,
+
+    checkout_users - purchasing_users
+        AS checkout_to_purchase_dropoff,
+
+    -- Percentage User Drop-offs
+
+    ROUND(
+        (1 - SAFE_DIVIDE(cart_users, product_view_users)) * 100,
+        2
+    ) AS view_to_cart_dropoff_pct,
+
+    ROUND(
+        (1 - SAFE_DIVIDE(checkout_users, cart_users)) * 100,
+        2
+    ) AS cart_to_checkout_dropoff_pct,
+
+    ROUND(
+        (1 - SAFE_DIVIDE(purchasing_users, checkout_users)) * 100,
+        2
+    ) AS checkout_to_purchase_dropoff_pct
+
+FROM funnel_users;
+
+-- END OF SUPPLEMENTARY FUNNEL ANALYSIS
+
