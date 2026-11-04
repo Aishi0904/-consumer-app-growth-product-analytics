@@ -403,3 +403,191 @@ ORDER BY
 -- =========================================================
 
 -- END OF QUERY 14H
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14I: Product Identifier Reliability Assessment
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Assess product identifier reliability across
+-- views, cart additions and purchases.
+-- Quantify the share of identifiable item events.
+
+SELECT
+    event_name,
+
+    COUNT(*) AS total_item_events,
+
+    COUNTIF(
+        item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+    ) AS identifiable_item_events,
+
+    COUNTIF(
+        item.item_id IS NULL
+        OR TRIM(item.item_id) = ''
+        OR LOWER(TRIM(item.item_id)) IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+    ) AS unidentified_item_events,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(
+                item.item_id IS NOT NULL
+                AND TRIM(item.item_id) != ''
+                AND LOWER(TRIM(item.item_id)) NOT IN (
+                    '(not set)',
+                    'not set',
+                    'unknown',
+                    'null'
+                )
+            ),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS identifier_reliability_pct,
+
+    COUNT(DISTINCT user_pseudo_id) AS unique_users
+
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+    AND event_name IN (
+        'view_item',
+        'add_to_cart',
+        'purchase'
+    )
+
+GROUP BY
+    event_name
+
+ORDER BY
+    event_name;
+
+-- END OF QUERY 14I
+
+
+
+-- =========================================================
+-- PROJECT: Consumer App Growth & Product Analytics
+-- QUERY 14I: Product Identifier Reliability Assessment
+-- TOOL: Google BigQuery
+-- PERIOD: November 2020 - January 2021
+-- =========================================================
+
+-- OBJECTIVE:
+-- Assess product identifier reliability across
+-- views, cart additions and purchases.
+-- Quantify the share of identifiable item events.
+
+SELECT
+    event_name,
+
+    COUNT(*) AS total_item_events,
+
+    COUNTIF(
+        item.item_id IS NOT NULL
+        AND TRIM(item.item_id) != ''
+        AND LOWER(TRIM(item.item_id)) NOT IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+    ) AS identifiable_item_events,
+
+    COUNTIF(
+        item.item_id IS NULL
+        OR TRIM(item.item_id) = ''
+        OR LOWER(TRIM(item.item_id)) IN (
+            '(not set)',
+            'not set',
+            'unknown',
+            'null'
+        )
+    ) AS unidentified_item_events,
+
+    ROUND(
+        SAFE_DIVIDE(
+            COUNTIF(
+                item.item_id IS NOT NULL
+                AND TRIM(item.item_id) != ''
+                AND LOWER(TRIM(item.item_id)) NOT IN (
+                    '(not set)',
+                    'not set',
+                    'unknown',
+                    'null'
+                )
+            ),
+            COUNT(*)
+        ) * 100,
+        2
+    ) AS identifier_reliability_pct,
+
+    COUNT(DISTINCT user_pseudo_id) AS unique_users
+
+FROM
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(items) AS item
+
+WHERE
+    _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+    AND event_name IN (
+        'view_item',
+        'add_to_cart',
+        'purchase'
+    )
+
+GROUP BY
+    event_name
+
+ORDER BY
+    event_name;
+
+-- =========================================================
+-- BUSINESS INSIGHTS:
+--
+-- 1. Product views recorded 2,748,246 item events,
+--    with only 9 unidentified product IDs.
+--    Identifier reliability was approximately 100%.
+--
+-- 2. Add-to-cart events recorded 667,426 item events,
+--    with 144 unidentified product IDs.
+--    Identifier reliability was 99.98%.
+--
+-- 3. Purchase events recorded 16,003 item events,
+--    with 448 unidentified product IDs.
+--    Identifier reliability was 97.20%.
+--
+-- 4. Purchase events demonstrated the weakest
+--    identifier coverage among the three event types.
+--
+-- 5. Unidentified purchase records may affect
+--    product-level purchase attribution and revenue
+--    analysis.
+--
+-- 6. Product-level conversion analysis should account
+--    for identifier inconsistencies before drawing
+--    conclusions about individual product performance.
+--
+-- =========================================================
+
+-- END OF QUERY 14I
